@@ -1,0 +1,11 @@
+# dane osobiste i sekrety: nigdy do repo
+.env
+.env.*
+!.env.example
+supabase/seed/seed.sql
+supabase/seed/historical_import_generated.sql
+scripts/accounts.local.json
+*.csv
+SOURCES/
+supabase/.temp/
+node_modules/

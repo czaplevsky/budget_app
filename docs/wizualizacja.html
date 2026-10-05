@@ -1,0 +1,379 @@
+<title>Budget App</title>
+<style>
+/* Układ: ciemny pas nagłówka jak w Budget-Dashboard_v3, pod nim sekcje z jednym diagramem każda.
+   Tokeny: paleta slate + niebieski akcent z istniejącego dashboardu; semantyczne zielony/żółty/czerwony osobno. */
+:root{
+  --bg:#f0f2f5; --surface:#ffffff; --ink:#1e293b; --muted:#64748b;
+  --line:#e2e8f0; --line-strong:#cbd5e1; --head:#0f172a; --head-ink:#f8fafc; --head-muted:#94a3b8;
+  --accent:#3b82f6; --accent-ink:#1d4ed8; --accent-tint:#eaf1fe;
+  --ok:#15803d; --ok-tint:#e6f6ec; --warn:#b45309; --warn-tint:#fdf1dc; --bad:#b91c1c; --bad-tint:#fdeaea;
+  --code-bg:#f1f5f9;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b1220; --surface:#131c2e; --ink:#e2e8f0; --muted:#94a3b8;
+    --line:#24324a; --line-strong:#3a4b69; --head:#0a101c; --head-ink:#f8fafc; --head-muted:#94a3b8;
+    --accent:#60a5fa; --accent-ink:#93c5fd; --accent-tint:#17284a;
+    --ok:#4ade80; --ok-tint:#10301f; --warn:#fbbf24; --warn-tint:#3a2b0c; --bad:#f87171; --bad-tint:#3d1717;
+    --code-bg:#0e1626; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b1220; --surface:#131c2e; --ink:#e2e8f0; --muted:#94a3b8;
+  --line:#24324a; --line-strong:#3a4b69; --head:#0a101c; --head-ink:#f8fafc; --head-muted:#94a3b8;
+  --accent:#60a5fa; --accent-ink:#93c5fd; --accent-tint:#17284a;
+  --ok:#4ade80; --ok-tint:#10301f; --warn:#fbbf24; --warn-tint:#3a2b0c; --bad:#f87171; --bad-tint:#3d1717;
+  --code-bg:#0e1626; color-scheme:dark;
+}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55}
+*{box-sizing:border-box}
+.wrap{max-width:1040px;margin-inline:auto;padding-inline:20px}
+header.top{background:var(--head);color:var(--head-ink);padding-block:34px 30px}
+header.top h1{margin:0 0 6px;font-size:34px;line-height:1.1;letter-spacing:-.01em;text-wrap:balance}
+header.top p{margin:0;color:var(--head-muted);max-width:60ch;font-size:16px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.chip{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:.02em;border:1px solid transparent}
+.chip.ok{background:var(--ok-tint);color:var(--ok);border-color:var(--ok)}
+.chip.warn{background:var(--warn-tint);color:var(--warn);border-color:var(--warn)}
+.chip.bad{background:var(--bad-tint);color:var(--bad);border-color:var(--bad)}
+.chip.info{background:var(--accent-tint);color:var(--accent-ink);border-color:var(--accent)}
+header.top .chip{background:transparent}
+header.top .chip.ok{color:#4ade80;border-color:#4ade80}
+header.top .chip.warn{color:#fbbf24;border-color:#fbbf24}
+header.top .chip.bad{color:#f87171;border-color:#f87171}
+main{padding-block:10px 40px}
+section{padding-block:30px 6px}
+.eyebrow{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 4px}
+h2{margin:0 0 6px;font-size:23px;line-height:1.25;text-wrap:balance}
+.lead{margin:0 0 16px;color:var(--muted);max-width:66ch}
+figure{margin:0}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.scroll{overflow-x:auto}
+.scroll svg{display:block;width:100%;min-width:860px;height:auto}
+figcaption{font-size:13px;color:var(--muted);margin-top:10px;max-width:80ch}
+figcaption b{color:var(--ink)}
+/* SVG: wszystko z tokenów, żeby oba motywy czytały się tak samo */
+svg text{font-family:var(--sans);fill:var(--ink)}
+svg .h{font-size:13px;font-weight:700}
+svg .s{font-size:11px;fill:var(--muted)}
+svg .m{font-size:11px;fill:var(--muted)}
+svg .acc{fill:var(--accent-ink)}
+svg .big{font-size:20px;font-weight:700}
+svg .box{fill:var(--surface);stroke:var(--line-strong);stroke-width:1.4}
+svg .box.acc{fill:var(--accent-tint);stroke:var(--accent)}
+svg .box.ok{fill:var(--ok-tint);stroke:var(--ok)}
+svg .box.warn{fill:var(--warn-tint);stroke:var(--warn)}
+svg .box.dash{stroke-dasharray:5 4;fill:none}
+svg .zone{fill:var(--code-bg);stroke:var(--line-strong);stroke-width:1.2}
+svg .arr{fill:none;stroke:var(--muted);stroke-width:1.6}
+svg .arr.dash{stroke-dasharray:5 4}
+svg .arr.acc{stroke:var(--accent)}
+svg .tip{fill:var(--muted)}
+svg .tip.acc{fill:var(--accent)}
+svg .base{stroke:var(--line-strong);stroke-width:1.2}
+svg .conn{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3}
+svg .bar-in{fill:var(--accent)}
+svg .bar-out{fill:var(--bad)}
+svg .bar-sts{fill:var(--ok)}
+svg .bar-neutral{fill:var(--muted)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:760px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.panel h3{margin:0 0 8px;font-size:16px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+tr:last-child td{border-bottom:none}
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px 6px}
+td.yes{color:var(--ok);font-weight:700;white-space:nowrap}
+td.no{color:var(--bad);font-weight:700;white-space:nowrap}
+code,pre{font-family:var(--mono);font-size:12.5px}
+code{background:var(--code-bg);padding:1px 5px;border-radius:5px}
+pre{background:var(--code-bg);border:1px solid var(--line);border-radius:12px;padding:14px;overflow-x:auto;margin:0;line-height:1.5}
+.flow3{display:grid;grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr) 28px minmax(0,1fr);align-items:stretch;gap:0}
+.flow3 .step{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0}
+.flow3 .step b{display:block;margin-bottom:2px}
+.flow3 .step span{color:var(--muted);font-size:13px}
+.flow3 .gt{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:20px}
+@media (max-width:760px){.flow3{grid-template-columns:minmax(0,1fr)}.flow3 .gt{transform:rotate(90deg);height:26px}}
+ol.phases{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+ol.phases li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+ol.phases .tag{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent-ink);min-width:2.4em}
+ol.phases b{display:block}
+ol.phases span.d{color:var(--muted);font-size:13px}
+@media (max-width:560px){ol.phases li{grid-template-columns:auto minmax(0,1fr)}ol.phases li .chip{grid-column:2;justify-self:start}}
+footer{padding-block:20px 40px;color:var(--muted);font-size:13px}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <h1>Budget App</h1>
+    <p>Aplikacja, która w ciągu dnia mówi jedno: ile możesz dziś wydać, żeby na koniec miesiąca wyjść na zero po ratach i oszczędnościach.</p>
+    <div class="chips">
+      <span class="chip ok">kod fazy 0/1 napisany</span>
+      <span class="chip warn">niewdrożony</span>
+      <span class="chip warn">nieuruchamiany, tylko przegląd statyczny</span>
+      <span class="chip info">iPhone: Apple Pay, Skróty, Scriptable</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section>
+  <p class="eyebrow">Architektura</p>
+  <h2>Skąd wchodzą wydatki i gdzie je widać</h2>
+  <p class="lead">Pięć wejść, jedna baza. Po każdym wpisie baza sama przelicza jedną liczbę, a widget i powiadomienie tylko ją czytają.</p>
+  <figure class="fig">
+    <div class="scroll">
+    <svg viewBox="0 0 980 490" role="img" aria-label="Pięć wejść (Apple Pay, zrzut zakupu, ręczny wpis, CSV z banku, SMS) trafia przez Skróty iOS do funkcji Supabase, zapisuje się w Postgresie, a wynik czyta widget na ekranie blokady, powiadomienie i dashboard.">
+      <defs>
+        <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="tip" d="M0,0 L10,5 L0,10 z"/></marker>
+        <marker id="a1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="tip acc" d="M0,0 L10,5 L0,10 z"/></marker>
+      </defs>
+
+      <!-- wejścia -->
+      <rect class="box" x="12" y="90" width="172" height="54" rx="9"/>
+      <text class="h" x="24" y="113">Apple Pay</text><text class="s" x="24" y="130">sklep, kwota, karta</text>
+      <rect class="box acc" x="12" y="160" width="172" height="54" rx="9"/>
+      <text class="h" x="24" y="183">Zrzut, paragon, mail</text><text class="s" x="24" y="200">PayPro, PayU, PayPo, gotówka</text>
+      <rect class="box" x="12" y="230" width="172" height="54" rx="9"/>
+      <text class="h" x="24" y="253">Ręczny wpis</text><text class="s" x="24" y="270">Siri, przycisk akcji, zegarek</text>
+      <rect class="box" x="12" y="300" width="172" height="54" rx="9"/>
+      <text class="h" x="24" y="323">CSV z banku</text><text class="s" x="24" y="340">raz w miesiącu, rekonsyliacja</text>
+      <rect class="box dash" x="12" y="370" width="172" height="54" rx="9"/>
+      <text class="h" x="24" y="393">SMS z banku</text><text class="s" x="24" y="410">wyłączone, opcja na zapas</text>
+
+      <!-- strzałki wejść -->
+      <polyline class="arr" points="184,117 300,117 456,140" marker-end="url(#a1)"/>
+      <text class="m" x="194" y="110">Skrót Transakcja</text>
+      <polyline class="arr acc" points="184,187 300,187 456,165" marker-end="url(#a1a)"/>
+      <text class="m" x="194" y="180">Skrót Zrzut</text>
+      <polyline class="arr" points="184,257 300,257 456,190" marker-end="url(#a1)"/>
+      <text class="m" x="194" y="250">Skrót Wydatek</text>
+      <polyline class="arr" points="184,327 300,327 456,215" marker-end="url(#a1)"/>
+      <text class="m" x="194" y="320">import-csv</text>
+      <polyline class="arr dash" points="184,397 300,397 456,240" marker-end="url(#a1)"/>
+      <text class="m" x="194" y="390">Skrót Wiadomość</text>
+
+      <!-- Claude -->
+      <rect class="box acc" x="456" y="10" width="268" height="44" rx="9"/>
+      <text class="h" x="470" y="29">Claude API</text><text class="s" x="470" y="45">odczyt zrzutu i paragonu</text>
+      <line class="arr acc" x1="590" y1="54" x2="590" y2="86" marker-end="url(#a1a)" marker-start="url(#a1a)"/>
+      <text class="m" x="600" y="74">obraz, JSON</text>
+
+      <!-- Supabase -->
+      <rect class="zone" x="440" y="86" width="300" height="394" rx="12"/>
+      <text class="h" x="456" y="108">Supabase</text>
+      <rect class="box" x="456" y="120" width="268" height="130" rx="9"/>
+      <text class="h" x="470" y="142">Edge Functions (10)</text>
+      <text class="s" x="470" y="164">ingest-applepay, ingest-receipt</text>
+      <text class="s" x="470" y="182">transactions, import-csv</text>
+      <text class="s" x="470" y="200">widget, period, review</text>
+      <text class="s" x="470" y="218">windfall, balances, ingest-sms</text>
+      <line class="arr" x1="590" y1="250" x2="590" y2="296" marker-end="url(#a1)"/>
+      <text class="m" x="600" y="278">zapis, klasyfikacja, dedup</text>
+      <rect class="box" x="456" y="296" width="268" height="170" rx="9"/>
+      <text class="h" x="470" y="318">Postgres</text>
+      <text class="s" x="470" y="340">transactions</text>
+      <text class="s" x="470" y="358">recurring_templates, period_lines</text>
+      <text class="s" x="470" y="376">budget_periods, widget_state</text>
+      <text class="s" x="470" y="394">windfalls, goals, ingest_log</text>
+      <text class="s acc" x="470" y="424" style="font-weight:700">trigger po każdym wpisie</text>
+      <text class="s acc" x="470" y="442" style="font-weight:700">przelicza widget_state</text>
+
+      <!-- wyjścia -->
+      <rect class="box ok" x="810" y="130" width="160" height="54" rx="9"/>
+      <text class="h" x="822" y="153">Widget Scriptable</text><text class="s" x="822" y="170">ekran blokady i główny</text>
+      <rect class="box ok" x="810" y="230" width="160" height="54" rx="9"/>
+      <text class="h" x="822" y="253">Powiadomienie</text><text class="s" x="822" y="270">zostało X zł, Y na dzień</text>
+      <rect class="box dash" x="810" y="330" width="160" height="54" rx="9"/>
+      <text class="h" x="822" y="353">Dashboard web</text><text class="s" x="822" y="370">do zrobienia, faza 3</text>
+      <line class="arr" x1="740" y1="157" x2="810" y2="157" marker-end="url(#a1)"/>
+      <text class="m" x="745" y="150">GET /widget</text>
+      <line class="arr" x1="740" y1="257" x2="810" y2="257" marker-end="url(#a1)"/>
+      <text class="m" x="754" y="250">po wpisie</text>
+      <line class="arr dash" x1="740" y1="357" x2="810" y2="357" marker-end="url(#a1)"/>
+      <text class="m" x="764" y="350">API</text>
+    </svg>
+    </div>
+    <figcaption><b>Niebieskie</b> to nowość z tej tury: zrzuty i paragony. <b>Przerywane</b> to rzeczy, które są gotowe jako kod albo jeszcze nie istnieją. Apple Pay jest głównym wejściem, bo płacisz zawsze telefonem. SMS wyłączyłeś, więc BLIK i przelewy łapie ręczny wpis, zrzut i CSV.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <p class="eyebrow">Nowe: zrzuty zakupów</p>
+  <h2>Co się dzieje ze zrzutem z PayPro</h2>
+  <p class="lead">W banku taki zakup to sama bramka i kwota. Zrzut dostarcza sklep, więc backend uzupełnia istniejący wpis zamiast dodawać drugi wydatek.</p>
+  <figure class="fig">
+    <div class="scroll">
+    <svg viewBox="0 0 980 340" role="img" aria-label="Zrzut jest odczytywany przez Claude, potem system sprawdza, czy taki wpis już jest: duplikat nic nie dodaje, wpis z banku zostaje uzupełniony o sklep i kategorię, brak wpisu tworzy nowy wpis.">
+      <defs>
+        <marker id="b1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="tip" d="M0,0 L10,5 L0,10 z"/></marker>
+        <marker id="b1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="tip acc" d="M0,0 L10,5 L0,10 z"/></marker>
+      </defs>
+      <rect class="box" x="12" y="138" width="150" height="64" rx="9"/>
+      <text class="h" x="24" y="162">Zrzut, paragon</text><text class="s" x="24" y="180">lub tekst maila</text><text class="s" x="24" y="194">do 4 obrazów</text>
+      <line class="arr" x1="162" y1="170" x2="206" y2="170" marker-end="url(#b1)"/>
+      <rect class="box acc" x="206" y="128" width="200" height="84" rx="9"/>
+      <text class="h" x="218" y="152">Claude czyta</text>
+      <text class="s" x="218" y="172">sklep, kwota, data,</text><text class="s" x="218" y="188">operator, metoda płatności</text>
+      <line class="arr" x1="406" y1="170" x2="450" y2="170" marker-end="url(#b1)"/>
+      <rect class="box" x="450" y="138" width="170" height="64" rx="9"/>
+      <text class="h" x="462" y="162">Czy taki wpis</text><text class="h" x="462" y="178">już jest?</text>
+      <text class="s" x="462" y="194">fn_find_receipt_match</text>
+
+      <polyline class="arr" points="620,170 655,170 655,62 690,62" marker-end="url(#b1)"/>
+      <polyline class="arr acc" points="620,170 690,170" marker-end="url(#b1a)"/>
+      <polyline class="arr" points="620,170 655,170 655,278 690,278" marker-end="url(#b1)"/>
+
+      <rect class="box" x="690" y="20" width="280" height="84" rx="9"/>
+      <text class="h" x="704" y="44">Duplikat</text>
+      <text class="s" x="704" y="64">gdy: ta sama kwota, 2 dni, ten sam sklep</text>
+      <text class="s" x="704" y="84">efekt: nic nie dodaje</text>
+
+      <rect class="box acc" x="690" y="128" width="280" height="84" rx="9"/>
+      <text class="h" x="704" y="152">Wpis z banku, np. PAYPRO −149,00</text>
+      <text class="s" x="704" y="170">gdy: kwota co do grosza, 5 dni</text>
+      <text class="s" x="704" y="188">efekt: sklep i kategoria dopisane,</text>
+      <text class="s" x="704" y="204">kwota zostaje z banku</text>
+
+      <rect class="box ok" x="690" y="236" width="280" height="84" rx="9"/>
+      <text class="h" x="704" y="260">Brak wpisu (BLIK, pay-by-link)</text>
+      <text class="s" x="704" y="280">efekt: nowy wpis ze źródłem zrzut,</text>
+      <text class="s" x="704" y="296">import CSV scali się z nim później</text>
+    </svg>
+    </div>
+    <figcaption>Wpis jest zatwierdzony tylko wtedy, gdy znana jest kategoria i sklep, a pewność odczytu wynosi co najmniej 0,8. W przeciwnym razie trafia na listę do sprawdzenia, z menu kategorii w Skrócie. Gdy kwota ze zrzutu różni się od banku, wygrywa bank i dostajesz ostrzeżenie.</figcaption>
+  </figure>
+
+  <div style="height:16px"></div>
+  <p class="eyebrow">PayPo i inne „zapłać później”</p>
+  <div class="flow3" role="list">
+    <div class="step" role="listitem"><b>Zakup, zrzut</b><span>Wydatek liczy się dziś. Do spłaty rośnie o kwotę zakupu.</span></div>
+    <div class="gt" aria-hidden="true">→</div>
+    <div class="step" role="listitem"><b>Za kilka tygodni: przelew do PayPo</b><span>To rozliczenie, nie drugi wydatek. Wpis ma typ przelewu.</span></div>
+    <div class="gt" aria-hidden="true">→</div>
+    <div class="step" role="listitem"><b>Do spłaty spada</b><span>Przelew zamyka najstarsze zakupy po kolei, o ile kwota starcza na cały zakup.</span></div>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Wyliczenie</p>
+  <h2>Skąd bierze się jedna liczba</h2>
+  <p class="lead">Koszty stałe i oszczędności są odjęte z góry, zanim cokolwiek wydasz. Zostaje kwota na życie, dzielona przez dni do końca miesiąca.</p>
+  <figure class="fig">
+    <div class="scroll">
+    <svg viewBox="0 0 760 300" role="img" aria-label="Wykres kaskadowy na przykładowych liczbach: przychód 7000 zł, minus koszty stałe 3000, minus rezerwy 500, minus oszczędności 1000, zostaje 2500 zł do wydania w miesiącu.">
+      <line class="base" x1="20" y1="240" x2="740" y2="240"/>
+      <rect class="bar-in" x="30" y="40" width="100" height="200" rx="3"/>
+      <rect class="bar-out" x="180" y="40" width="100" height="85.7" rx="3"/>
+      <rect class="bar-out" x="330" y="125.7" width="100" height="14.3" rx="3"/>
+      <rect class="bar-out" x="480" y="140" width="100" height="28.6" rx="3"/>
+      <rect class="bar-sts" x="630" y="168.6" width="100" height="71.4" rx="3"/>
+      <line class="conn" x1="130" y1="40" x2="180" y2="40"/>
+      <line class="conn" x1="280" y1="125.7" x2="330" y2="125.7"/>
+      <line class="conn" x1="430" y1="140" x2="480" y2="140"/>
+      <line class="conn" x1="580" y1="168.6" x2="630" y2="168.6"/>
+      <text class="h" x="80" y="30" text-anchor="middle">7 000</text>
+      <text class="h" x="230" y="30" text-anchor="middle" style="fill:var(--bad)">−3 000</text>
+      <text class="h" x="380" y="116" text-anchor="middle" style="fill:var(--bad)">−500</text>
+      <text class="h" x="530" y="130" text-anchor="middle" style="fill:var(--bad)">−1 000</text>
+      <text class="big" x="680" y="158" text-anchor="middle" style="fill:var(--ok)">2 500</text>
+      <text class="h" x="80" y="262" text-anchor="middle">Przychód</text><text class="s" x="80" y="279" text-anchor="middle">wypłata</text>
+      <text class="h" x="230" y="262" text-anchor="middle">Koszty stałe</text><text class="s" x="230" y="279" text-anchor="middle">raty, czynsz</text>
+      <text class="h" x="380" y="262" text-anchor="middle">Rezerwy</text><text class="s" x="380" y="279" text-anchor="middle">ubezpieczenia</text>
+      <text class="h" x="530" y="262" text-anchor="middle">Oszczędności</text><text class="s" x="530" y="279" text-anchor="middle">auto-przelewy</text>
+      <text class="h" x="680" y="262" text-anchor="middle">Safe to spend</text><text class="s" x="680" y="279" text-anchor="middle">na życie</text>
+    </svg>
+    </div>
+    <figcaption><b>Przykład na okrągłych liczbach, nie Twoje dane.</b> Dziennie wychodzi kwota na życie podzielona przez dni do końca miesiąca (tu około 83 zł przy 30 dniach). Każdy wydatek zmienny obniża tę kwotę, a widget kolorem pokazuje tempo: zielony, żółty, czerwony.</figcaption>
+  </figure>
+
+  <div style="height:16px"></div>
+  <figure class="fig">
+    <div class="scroll">
+    <svg viewBox="0 0 980 130" role="img" aria-label="Szablon kosztu stałego jest kopiowany na linię miesiąca, wpis z banku dopasowuje się do niej po szablonie, linia zmienia status na zapłaconą.">
+      <defs><marker id="c1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="tip" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+      <rect class="box" x="12" y="30" width="176" height="64" rx="9"/><text class="h" x="24" y="54">Szablon</text><text class="s" x="24" y="72">Czynsz, 5. dnia miesiąca</text>
+      <line class="arr" x1="188" y1="62" x2="264" y2="62" marker-end="url(#c1)"/><text class="m" x="205" y="54">kopiuje</text>
+      <rect class="box" x="264" y="30" width="176" height="64" rx="9"/><text class="h" x="276" y="54">Linia miesiąca</text><text class="s" x="276" y="72">planowana, termin 5.</text>
+      <line class="arr" x1="440" y1="62" x2="516" y2="62" marker-end="url(#c1)"/><text class="m" x="445" y="54">dopasowuje</text>
+      <rect class="box acc" x="516" y="30" width="176" height="64" rx="9"/><text class="h" x="528" y="54">Wpis z banku</text><text class="s" x="528" y="72">niesie id szablonu</text>
+      <line class="arr" x1="692" y1="62" x2="768" y2="62" marker-end="url(#c1)"/><text class="m" x="709" y="54">oznacza</text>
+      <rect class="box ok" x="768" y="30" width="176" height="64" rx="9"/><text class="h" x="780" y="54">Linia zapłacona</text><text class="s" x="780" y="72">różnica kwoty policzona</text>
+    </svg>
+    </div>
+    <figcaption>Dopasowanie idzie po id szablonu, nie po kategorii. Trzy szablony oszczędzania mają tę samą kategorię, więc po kategorii zapłaciłby się niewłaściwy.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <p class="eyebrow">Duplikaty</p>
+  <h2>Które wpisy się scalają</h2>
+  <p class="lead">Ten sam zakup przychodzi z kilku źródeł: Apple Pay, zrzut, bank. Scalanie działa tylko między różnymi źródłami.</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Para</th><th>Scala?</th><th>Dlaczego</th></tr></thead>
+    <tbody>
+      <tr><td>Apple Pay i wpis z banku</td><td class="yes">tak</td><td>ta sama kwota, okno 3 dni, podobny sklep</td></tr>
+      <tr><td>Zrzut i bank, gdy bank pokazuje bramkę</td><td class="yes">tak</td><td>nazwa sklepu się nie zgadza z natury, liczy się kwota co do grosza i okno 5 dni</td></tr>
+      <tr><td>Dwa tapnięcia Apple Pay 6,50 w godzinę</td><td class="no">nie</td><td>to dwa zakupy, dedup nie działa w obrębie jednego źródła</td></tr>
+      <tr><td>Dwa identyczne wiersze w jednym CSV</td><td class="no">nie</td><td>to dwie transakcje, import pamięta, które już dopasował</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Plan</p>
+  <h2>Co zrobione, co czeka i na kogo</h2>
+  <ol class="phases">
+    <li><span class="tag">0</span><div><b>Fundament</b><span class="d">Schemat bazy, funkcje, seed, import historii, widget, instrukcje Skrótów.</span></div><span class="chip ok">kod gotowy</span></li>
+    <li><span class="tag">0b</span><div><b>Test na telefonie, 30 minut</b><span class="d">Czy automatyzacja Transakcja odpala się po zapłacie, czy widget pokazuje liczbę, czy zrzut się odczytuje.</span></div><span class="chip warn">Ty</span></li>
+    <li><span class="tag">1</span><div><b>Ręczny MVP</b><span class="d">Tydzień życia z ręcznym wpisem i widgetem.</span></div><span class="chip info">po wdrożeniu</span></li>
+    <li><span class="tag">2</span><div><b>Automaty</b><span class="d">Apple Pay wpisuje się sam, zrzuty uzupełniają bramki.</span></div><span class="chip info">po 0b</span></li>
+    <li><span class="tag">3</span><div><b>Domknięcie</b><span class="d">Dashboard web, powiadomienia dzienne, kasowanie zdjęć po 90 dniach.</span></div><span class="chip info">ja</span></li>
+    <li><span class="tag">0c</span><div><b>Odświeżenie liczb</b><span class="d">Nowy wyciąg, koniec rat, realny czynsz z faktur, decyzja jak ująć wpływy i wydatki jednorazowe.</span></div><span class="chip warn">czekamy na dane</span></li>
+  </ol>
+</section>
+
+<section>
+  <p class="eyebrow">Przegląd kodu</p>
+  <h2>Co wyłożyłoby pierwsze uruchomienie</h2>
+  <p class="lead">Kod z pierwszej tury powstał bez możliwości uruchomienia. Ręczny przegląd po trzech tygodniach znalazł te błędy, wszystkie naprawione.</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Błąd</th><th>Skutek</th></tr></thead>
+    <tbody>
+      <tr><td><code>abs()</code> na interwale, którego Postgres nie ma</td><td>dedup nigdy by nie zadziałał</td></tr>
+      <tr><td>wzorce bez polskich znaków, normalizacja ich nie zdejmowała</td><td>raty, czynsz i wypłata nie trafiały w szablony</td></tr>
+      <tr><td>trigger wpisywał id jeszcze nieistniejącego wiersza do tabeli z kluczem obcym</td><td>każdy wpis stałego kosztu kończył się błędem</td></tr>
+      <tr><td>importer brał opis przelewu zamiast kontrahenta</td><td>nazwa płatnika (Netia, Orange, wypłata) ginęła</td></tr>
+      <tr><td>wzorzec „PŁATNOŚCIĄ” zamiast „PŁATNOŚĆ”</td><td>nazwy sklepów z płatności kartą nie były wyciągane</td></tr>
+      <tr><td>dedup wewnątrz jednego źródła</td><td>dwa bilety po 6,50 scalały się w jeden</td></tr>
+      <tr><td>rollover bez zamykania okresu, czas w UTC</td><td>miesiąc nigdy się nie zamykał, wpisy po północy lądowały w złym dniu</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Repozytorium</p>
+  <h2>Co jest w repo</h2>
+<pre>budget_app/
+  supabase/
+    migrations/   0001 schemat, 0002 funkcje, 0003 triggery i rollover,
+                  0004 storage, 0005 dokumenty, operatorzy płatności, BNPL
+    functions/    10 Edge Functions (Deno) + _shared (auth, Claude, CSV, kursy NBP)
+    seed/         seed.example.sql (wzór), import historii generowany lokalnie
+  scripts/        import_historical_csv.py, generate_api_key.py, reclassify_history.sql
+  shortcuts/      ApplePay, Wydatek, Zrzut: instrukcje budowy w aplikacji Skróty
+  widget/         BudgetWidget.js (Scriptable, ekran główny i blokady)
+  docs/           ta strona</pre>
+</section>
+
+</main>
+<footer><div class="wrap">Stan na 5 października 2026. Kod napisany i sprawdzony statycznie, bez uruchomienia na żywej bazie.</div></footer>
