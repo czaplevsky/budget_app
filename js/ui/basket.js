@@ -63,7 +63,7 @@ export function renderDetail(ctx) {
     h += '<div class="dh neu num"><div class="eyebrow">Saldo celu Wakacje</div>' +
       '<div class="rest" style="color:var(--ink)">' + (w ? fmtMoney(w.balance) : '–') + '</div>' +
       '<div class="scale"><span>wydane w miesiącu ' + fmtMoney(b.spent) + '</span><span>poza limitami miesiąca</span></div>' +
-      '<div class="verdict neu">Ten koszyk nie liczy się do ' + fmtMoney(t.limitAll, { round: 'auto' }) + '. Wydatki obciążają tylko saldo celu.' +
+      '<div class="verdict neu">Ten koszyk nie liczy się do limitów miesiąca. Wydatki obciążają tylko saldo celu.' +
       (w ? '' : ' Ustaw saldo w Ustawieniach.') + '</div></div>';
   } else {
     const plan = isPlan(b);

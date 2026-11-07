@@ -93,9 +93,10 @@ export function renderHome(ctx) {
       parts.push(esc(b.name) + ' ' + fmtMoney(b.planned, { round: 'auto' }) + (pend.length === 1 ? ' (' + dm(pend[0].date) + ')' : ''));
     }
   });
-  h += '<div class="pay num"><div class="pl1"><span>Do zapłaty do końca miesiąca</span><b>' + fmtMoney(t.toPay) + '</b></div>' +
-    '<div class="pl2">' + (parts.length ? parts.join(' · ') : 'nic nie czeka na zapłatę') + '</div>' +
-    '<div class="pl2">Limity miesiąca razem ' + fmtMoney(t.limitAll, { round: 'auto' }) + ' · wydane w nich ' + fmtMoney(t.spentAll) + '</div></div>';
+  h += '<div class="pay num">' + (t.toPay > 0
+    ? '<div class="pl1"><span>Jeszcze zejdzie z konta</span><b>' + fmtMoney(t.toPay) + '</b></div>' +
+      '<div class="pl2">' + parts.join(' · ') + '</div>'
+    : '<div class="pl2">Stałe i catering na ten miesiąc zapłacone.</div>') + '</div>';
 
   h += dueHtml(ms, data);
 
@@ -110,7 +111,7 @@ export function renderHome(ctx) {
       '<div class="nm">' + esc(b.name) + '</div>' +
       '<div class="m"><span>wydane <b>' + fmtMoney(b.spent) + '</b></span>' +
       '<span>saldo celu <b>' + (w ? fmtMoney(w.balance) : 'nie ustawiono') + '</b></span></div>' +
-      '<div class="nt">Poza limitami: nie liczy się do ' + fmtMoney(t.limitAll, { round: 'auto' }) + '.</div></button>';
+      '<div class="nt">Poza limitami miesiąca, schodzi z celu Wakacje.</div></button>';
   });
 
   return h;
