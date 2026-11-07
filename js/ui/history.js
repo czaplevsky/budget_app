@@ -13,7 +13,7 @@ export function renderHistory(ctx) {
   const newer = i > 0 ? months[i - 1] : null;
   const names = {};
   data.baskets.forEach((b) => { names[b.id] = b.name; });
-  const baskets = data.baskets.slice().sort((a, b) => a.order - b.order);
+  const baskets = data.baskets.filter((b) => !b.deleted).sort((a, b) => a.order - b.order);
 
   let h = '<h1 class="large">Historia</h1>';
   h += '<div class="msw"><button type="button" data-act="hist-month" data-ym="' + (older || '') + '"' + (older ? '' : ' disabled') + ' aria-label="Starszy miesiąc">' + ICON.back + '</button>' +

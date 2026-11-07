@@ -1,18 +1,22 @@
 // Szczegóły koszyka (panel wsuwany z prawej).
-import { fmtMoney } from '../format.js';
+import { fmtMoney, monthName } from '../format.js';
 import { esc, ICON, statusCls, isPlan, barHtml, entryRow, dm, SRC_SHORT } from './util.js';
 
 function verdict(b) {
   const cls = statusCls(b);
   const m = (g) => fmtMoney(g);
   let msg;
-  if (b.kind === 'daily') {
+  if (b.kind === 'daily' || b.kind === 'extra') {
     if ((b.limit || 0) === 0) {
       msg = b.spent > 0 ? 'Limit nie jest ustawiony, a są już wydatki: ' + m(b.spent) + '.' : 'Limit nie jest ustawiony (Ustawienia).';
     } else if (b.status === 'bad') {
       msg = 'Limit przekroczony o ' + m(b.spent - b.limit) + '.';
+    } else if (b.status === 'warn' && b.kind === 'extra') {
+      msg = 'Wykorzystane ponad 80% limitu: ' + m(b.spent) + ' z ' + m(b.limit) + '.';
     } else if (b.status === 'warn') {
       msg = 'Powyżej tempa o ' + m(b.spent - b.pace) + '. Jeszcze w limicie.';
+    } else if (b.kind === 'extra') {
+      msg = 'W limicie: wydane ' + m(b.spent) + ' z ' + m(b.limit) + '.';
     } else {
       msg = 'W tempie: wydane ' + m(b.spent) + ' przy normie do dziś ' + m(b.pace || 0) + '.';
     }
@@ -29,6 +33,12 @@ function verdict(b) {
     }
   }
   return '<div class="verdict ' + cls + '">' + msg + '</div>';
+}
+
+function rangeText(b) {
+  if (!b.from || !b.until) return 'dodatkowy';
+  const nm = (ym) => monthName(ym).toLowerCase();
+  return b.from === b.until ? nm(b.from) + ' ' + b.from.slice(0, 4) : nm(b.from) + ' ' + b.from.slice(0, 4) + ' – ' + nm(b.until) + ' ' + b.until.slice(0, 4);
 }
 
 function occRow(o) {
@@ -73,7 +83,9 @@ export function renderDetail(ctx) {
       barHtml(b) +
       '<div class="scale"><span>0</span><span>limit ' + fmtMoney(b.limit || 0, { round: 'auto' }) + '</span></div>' +
       '<div class="stats"><div>Limit<b>' + fmtMoney(b.limit || 0, { round: 'auto' }) + '</b></div><div>Wydane<b>' + fmtMoney(b.spent) + '</b></div>' +
-      '<div>' + (plan ? 'Zaplanowane' : 'Tempo na dziś') + '<b>' + fmtMoney(plan ? (b.planned || 0) : (b.pace || 0)) + '</b></div></div>' +
+      (b.kind === 'extra'
+        ? '<div>Zakres<b style="font-size:14px;white-space:normal">' + esc(rangeText((ctx.data.baskets || []).find((x) => x.id === b.id) || b)) + '</b></div></div>'
+        : '<div>' + (plan ? 'Zaplanowane' : 'Tempo na dziś') + '<b>' + fmtMoney(plan ? (b.planned || 0) : (b.pace || 0)) + '</b></div></div>') +
       verdict(b) + '</div>';
   }
 

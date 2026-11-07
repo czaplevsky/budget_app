@@ -1,5 +1,5 @@
 // Ekran "Koszyki": hero, do zapłaty, do potwierdzenia, kafelki, Wyjazdy, baner kopii.
-import { fmtMoney, monthName } from '../format.js';
+import { fmtMoney, monthName, monthNameGen } from '../format.js';
 import { esc, ICON, plural, dm, pct, statusCls, isPlan, ringHtml, SRC_SHORT } from './util.js';
 import { backupNow } from './backup.js';
 
@@ -14,7 +14,7 @@ function needsBackup(data) {
   return Date.now() - t > WEEK_MS;
 }
 
-function tileHtml(b, ms) {
+function tileHtml(b, ms, data) {
   const lim = b.limit || 0;
   const cls = statusCls(b);
   let nt;
@@ -30,6 +30,9 @@ function tileHtml(b, ms) {
     } else {
       nt = (b.hint ? esc(b.hint) : 'wszystko zapłacone');
     }
+  } else if (b.kind === 'extra') {
+    const raw = (data.baskets || []).find((x) => x.id === b.id) || b;
+    nt = 'dodatkowy · do ' + esc(monthNameGen(raw.until || b.until || ms.ym));
   } else if (b.weekend) {
     nt = 'ten weekend: ' + fmtMoney(b.weekend.spent, { round: true, noUnit: true }) +
       (b.weekend.limit ? ' / ' + fmtMoney(b.weekend.limit, { round: true, noUnit: true }) : '') + ' zł';
@@ -102,7 +105,7 @@ export function renderHome(ctx) {
 
   // kafelki
   h += '<div class="sec first">Koszyki</div><div class="tiles">' +
-    ms.baskets.filter((b) => b.kind !== 'outside').map((b) => tileHtml(b, ms)).join('') + '</div>';
+    ms.baskets.filter((b) => b.kind !== 'outside').map((b) => tileHtml(b, ms, data)).join('') + '</div>';
 
   // wyjazdy
   ms.baskets.filter((b) => b.kind === 'outside').forEach((b) => {

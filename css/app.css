@@ -230,6 +230,20 @@ button.entry:active{background:var(--code-bg)}
 .dialog h2{margin:8px 0 4px;font-size:20px}
 .dialog p{margin:0 0 16px;font-size:15px;line-height:22px;color:var(--muted)}
 .dialog .btn+.btn{margin-top:8px}
+/* okno edycji (ustawienia: platnosci, koszyki dodatkowe) */
+.escrim{z-index:72}
+.edialog{z-index:86;max-height:calc(100% - var(--sat) - 12px);overflow-y:auto;overscroll-behavior:contain}
+.edialog .flab{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:12px 4px 6px}
+.edialog .desc{margin-bottom:0;display:block;min-width:0;-webkit-appearance:none;appearance:none;text-align:left}
+.edialog .seg button{white-space:normal;line-height:16px;padding:4px}
+.edialog .src2{margin-bottom:0}
+.chipwrap{display:flex;flex-wrap:wrap;gap:8px}
+.eact{margin-top:16px}
+.eact .btn+.btn{margin-top:8px}
+.edialog .res{margin-top:12px}
+button.srowb{width:100%;text-align:left}
+button.srowb:active{background:var(--code-bg)}
+button.srowb .val{white-space:nowrap}
 /* toast */
 .toast{position:absolute;z-index:80;left:16px;right:16px;bottom:calc(var(--sab) + 56px + 96px);min-height:52px;border-radius:16px;background:#e2e8f0;color:var(--head);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 8px 0 16px;font-size:14px;font-weight:600;box-shadow:0 10px 30px rgba(2,6,23,.35);transform:translateY(24px);opacity:0;visibility:hidden;transition:transform .25s,opacity .25s,visibility .25s}
 .toast.on{transform:none;opacity:1;visibility:visible}

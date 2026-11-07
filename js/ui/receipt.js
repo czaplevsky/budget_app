@@ -1,6 +1,9 @@
 // Paragon / zrzut ekranu -> propozycja wpisu (OpenAI, klucz tylko na tym urządzeniu).
 // Klucz i model leżą w localStorage, NIE w IndexedDB, więc nigdy nie trafiają do kopii ani CSV.
 
+import { basketsForMonth } from '../calc.js';
+import { monthOf } from '../format.js';
+
 const LS_KEY = 'koszyki.ai';
 const API = 'https://api.openai.com/v1';
 // kolejność preferencji: tani model z obsługą zdjęć i structured outputs
@@ -126,7 +129,7 @@ function prompt(baskets, today) {
 export async function readReceipt(file, ctx) {
   let ai = getAi();
   if (!ai.key) throw new AiError('Najpierw wklej klucz OpenAI w Ustawieniach (sekcja Paragony).', 'nokey');
-  const baskets = ctx.data.baskets.slice().sort((a, b) => a.order - b.order);
+  const baskets = basketsForMonth(ctx.data.baskets.slice().sort((a, b) => a.order - b.order), monthOf(ctx.today));
   const dataUrl = await imageToDataUrl(file);
   const body = (model) => ({
     model,
@@ -166,7 +169,7 @@ export function normalize(r, ctx) {
     if (!isNaN(d) && (t - d) / 864e5 <= 366) out.date = r.date;
   }
   if (typeof r.merchant === 'string') out.merchant = r.merchant.trim().slice(0, 120);
-  if (typeof r.basket === 'string' && ctx.data.baskets.some((b) => b.id === r.basket)) out.basket = r.basket;
+  if (typeof r.basket === 'string' && basketsForMonth(ctx.data.baskets, monthOf(out.date || ctx.today)).some((b) => b.id === r.basket)) out.basket = r.basket;
   out.refund = r.is_refund === true;
   if (['high', 'medium', 'low'].indexOf(r.confidence) >= 0) out.confidence = r.confidence;
   return out;

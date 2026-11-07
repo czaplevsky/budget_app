@@ -11,6 +11,7 @@ import * as history from './ui/history.js';
 import * as month from './ui/month.js';
 import * as settings from './ui/settings.js';
 import * as welcome from './ui/welcome.js';
+import * as plans from './ui/plans.js';
 
 const ui = {
   tab: 'home',        // home | hist | month | set
@@ -94,7 +95,7 @@ function render(opts) {
   occ.renderDialog(ctx);
 }
 
-const actions = Object.assign({}, home.actions, basket.actions, sheet.actions, occ.actions, history.actions, month.actions, settings.actions, welcome.actions, {
+const actions = Object.assign({}, home.actions, basket.actions, sheet.actions, occ.actions, history.actions, month.actions, settings.actions, welcome.actions, plans.actions, {
   tab(el) {
     const t = el.dataset.tab;
     if (t === ui.tab && ui.basket == null) {
@@ -107,8 +108,8 @@ const actions = Object.assign({}, home.actions, basket.actions, sheet.actions, o
     render();
   },
 });
-const changes = Object.assign({}, sheet.changes, occ.changes, settings.changes);
-const inputs = Object.assign({}, sheet.inputs, settings.inputs, welcome.inputs);
+const changes = Object.assign({}, sheet.changes, occ.changes, settings.changes, plans.changes);
+const inputs = Object.assign({}, sheet.inputs, settings.inputs, welcome.inputs, plans.inputs);
 
 function fail(err) {
   console.error(err);

@@ -1,6 +1,7 @@
 // Arkusz dodawania / edycji wpisu z własną klawiaturą kwoty.
 import { saveEntry, deleteEntry, restoreEntry, setSetting } from '../db.js';
-import { fmtMoney, fmtDateShort, keypadPress, amountInputToGrosze, addDays } from '../format.js';
+import { fmtMoney, fmtDateShort, keypadPress, amountInputToGrosze, addDays, monthOf } from '../format.js';
+import { basketsForMonth } from '../calc.js';
 import { esc, ICON, SOURCES, SRC_SHORT, dm, groszeToKeypad, isPlan } from './util.js';
 import { findOcc, maybeAskNext } from './occ.js';
 import { showToast } from './toast.js';
@@ -82,7 +83,10 @@ function canSave(ctx, f) {
 export function renderSheet(ctx) {
   const f = ctx.ui.sheet;
   if (!f) return;
-  const baskets = ctx.data.baskets.slice().sort((a, b) => a.order - b.order);
+  const sorted = ctx.data.baskets.slice().sort((a, b) => a.order - b.order);
+  // koszyki widoczne w miesiącu wybranej daty + zawsze aktualnie wybrany (edycja starego wpisu)
+  const visible = basketsForMonth(sorted, monthOf(f.date));
+  const baskets = sorted.filter((b) => visible.indexOf(b) >= 0 || b.id === f.basket);
   const msb = ctx.ms.baskets.find((b) => b.id === f.basket);
   let h = '<div class="grab"></div><div class="sh-top"><button type="button" data-act="sheet-close">Anuluj</button>' +
     '<h2>' + (f.id ? 'Edytuj wpis' : 'Nowy wydatek') + '</h2>' +

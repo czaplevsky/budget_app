@@ -570,6 +570,110 @@ group('monthsWithData', () => {
   eq(C.monthsWithData(es, '2025-12-31'), ['2026-11', '2026-09', '2025-12'], 'sortowanie przez granice roku');
 });
 
+group('basketsForMonth', () => {
+  const a = bk('a', 'daily', 100000);
+  const ex = bk('xs', 'extra', 50000, { from: '2026-12', until: '2027-01' });
+  const del = bk('gone', 'daily', 1000, { deleted: true });
+  const exDel = bk('xd', 'extra', 1000, { from: '2026-01', until: '2027-12', deleted: true });
+  const o = bk('o', 'outside', 0);
+  const all = [a, ex, del, exDel, o];
+  const ids = (ym) => C.basketsForMonth(all, ym).map((b) => b.id);
+  eq(ids('2026-12'), ['a', 'xs', 'o'], 'extra w zakresie (poczatek), bez deleted');
+  eq(ids('2027-01'), ['a', 'xs', 'o'], 'extra w zakresie (koniec)');
+  eq(ids('2026-11'), ['a', 'o'], 'extra przed zakresem ukryty');
+  eq(ids('2027-02'), ['a', 'o'], 'extra po zakresie ukryty');
+  eq(C.basketsForMonth(null, '2026-11'), [], 'brak koszykow');
+  eq(ids('2026-12').includes('gone'), false, 'deleted pomijany');
+});
+
+group('koszyk extra w monthState', () => {
+  const a = bk('a', 'daily', 100000);
+  const b = bk('b', 'daily', 50000);
+  const fx = (over) => bk('xs', 'extra', 30000, { from: '2026-11', until: '2026-12', ...over });
+  const base = C.monthState('2026-11', data({ baskets: [a, b] }), TODAY);
+  eq(base.totals.daily.limit, 150000, 'baza: daily.limit bez extra');
+  eq(base.totals.extra, { limit: 0, spent: 0 }, 'baza: totals.extra puste');
+
+  const d = data({ baskets: [a, b, fx()], entries: [en('a', '2026-11-03', 12345)] });
+  const ms = C.monthState('2026-11', d, TODAY);
+  const x = getB(ms, 'xs');
+  eq(!!x, true, 'extra w zakresie jest w baskets');
+  eq(x.limit, 30000, 'extra: limit');
+  eq(x.pace, null, 'extra: pace null');
+  eq(x.planned, 0, 'extra: planned 0');
+  eq(x.remaining, 30000, 'extra: remaining');
+  eq(x.status, 'ok', 'extra: status ok');
+  eq(ms.totals.daily.limit, 180000, 'extra zwieksza daily.limit');
+  eq(ms.totals.daily.remaining, 180000 - 12345, 'Do wydania z extra');
+  eq(ms.totals.perDay, Math.floor((180000 - 12345) / 24), 'perDay uwzglednia extra');
+  eq(ms.totals.limitAll, 180000, 'limitAll z extra');
+  eq(ms.totals.extra, { limit: 30000, spent: 0 }, 'totals.extra');
+  eq(ms.totals.toPay, 0, 'extra nie liczy sie do toPay');
+
+  // poza zakresem, bez wpisow: brak
+  eq(getB(C.monthState('2026-10', d, '2026-10-15'), 'xs'), undefined, 'przed zakresem bez wpisow: brak w baskets');
+  eq(getB(C.monthState('2027-01', d, '2027-01-15'), 'xs'), undefined, 'po zakresie bez wpisow: brak w baskets');
+
+  // extra z limitem 0 i wydatkiem: bad, Do wydania spada o wydatek
+  const d0 = data({ baskets: [a, b, fx({ limit: 0 })], entries: [en('xs', '2026-11-04', 7000)] });
+  const m0 = C.monthState('2026-11', d0, TODAY);
+  eq(getB(m0, 'xs').status, 'bad', 'extra limit 0 + wydatek: bad');
+  eq(getB(m0, 'xs').remaining, -7000, 'extra limit 0: remaining ujemne');
+  eq(m0.totals.daily.remaining, 150000 - 7000, 'Do wydania spada o wydatek z extra');
+  eq(m0.totals.spentAll, 7000, 'spentAll z extra');
+  eq(m0.totals.extra, { limit: 0, spent: 7000 }, 'totals.extra: wydatek');
+  const mz = C.monthState('2026-11', data({ baskets: [a, fx({ limit: 0 })] }), TODAY);
+  eq(getB(mz, 'xs').status, 'ok', 'extra limit 0 bez wydatku: ok');
+
+  // wpis w extra poza zakresem dalej liczony w miesiacu wpisu
+  const dOut = data({ baskets: [a, fx({ from: '2026-12', until: '2026-12' })], entries: [en('xs', '2026-11-06', 4000)] });
+  const mo = C.monthState('2026-11', dOut, TODAY);
+  eq(!!getB(mo, 'xs'), true, 'extra poza zakresem ale z wpisem: w baskets');
+  eq(mo.totals.spentAll, 4000, 'wpis z extra poza zakresem w spentAll');
+  eq(mo.totals.daily.spent, 4000, 'wpis z extra poza zakresem w daily.spent');
+  eq(mo.totals.extra.spent, 4000, 'wpis z extra poza zakresem w totals.extra');
+  eq(getB(mo, 'xs').limit, 0, 'extra poza zakresem: limit 0 (budżet nie podnosi Do wydania)');
+  eq(mo.totals.extra.limit, 0, 'extra poza zakresem: totals.extra.limit 0');
+  eq(getB(mo, 'xs').status, 'bad', 'extra poza zakresem z wydatkiem: bad');
+
+  // zwrot w extra
+  const dRef = data({ baskets: [a, fx()], entries: [en('xs', '2026-11-04', 10000), en('xs', '2026-11-05', 3000, { isRefund: true })] });
+  eq(getB(C.monthState('2026-11', dRef, TODAY), 'xs').spent, 7000, 'extra: zwrot odejmuje');
+
+  // usuniety wpis nie wciaga koszyka poza zakresem
+  const dDelE = data({ baskets: [a, fx({ from: '2026-12', until: '2026-12' })], entries: [en('xs', '2026-11-06', 4000, { deleted: true })] });
+  eq(getB(C.monthState('2026-11', dDelE, TODAY), 'xs'), undefined, 'usuniety wpis nie wciaga extra poza zakresem');
+
+  // deleted koszyk z wpisem w miesiacu dalej w sumach
+  const dDel = data({ baskets: [a, bk('old', 'daily', 20000, { deleted: true })], entries: [en('old', '2026-11-02', 5000)] });
+  const md = C.monthState('2026-11', dDel, TODAY);
+  eq(!!getB(md, 'old'), true, 'deleted z wpisem: w baskets');
+  eq(md.totals.daily.spent, 5000, 'deleted z wpisem: w daily.spent');
+  eq(md.totals.daily.limit, 120000, 'deleted z wpisem: limit koszyka dalej w sumie');
+  const dDel2 = data({ baskets: [a, bk('old', 'daily', 20000, { deleted: true })] });
+  eq(getB(C.monthState('2026-11', dDel2, TODAY), 'old'), undefined, 'deleted bez wpisow: brak');
+  const dDelX = data({ baskets: [a, fx({ deleted: true })] });
+  eq(getB(C.monthState('2026-11', dDelX, TODAY), 'xs'), undefined, 'extra deleted w zakresie bez wpisow: brak');
+
+  // warn przy 80%
+  const w = (spent) => getB(C.monthState('2026-11', data({ baskets: [a, fx({ limit: 10000 })], entries: spent ? [en('xs', '2026-11-03', spent)] : [] }), TODAY), 'xs').status;
+  eq(w(7999), 'ok', 'extra 79,99%: ok');
+  eq(w(8000), 'warn', 'extra dokladnie 80%: warn');
+  eq(w(10000), 'warn', 'extra dokladnie 100%: warn');
+  eq(w(10001), 'bad', 'extra ponad 100%: bad');
+
+  // extra nie ma tempa
+  const mEarly = C.monthState('2026-11', data({ baskets: [a, fx({ limit: 100000 })], entries: [en('xs', '2026-11-01', 50000)] }), '2026-11-02');
+  eq(getB(mEarly, 'xs').status, 'ok', 'extra: brak tempa (50% na poczatku miesiaca = ok)');
+
+  // pozostale rodzaje bez zmian
+  const dMix = data({ baskets: [bk('s', 'fixed', 10000), a, fx()], entries: [en('s', '2026-11-02', 2000)] });
+  const mm = C.monthState('2026-11', dMix, TODAY);
+  eq(mm.totals.daily.limit, 130000, 'fixed nie wchodzi do daily, extra tak');
+  eq(mm.totals.limitAll, 140000, 'limitAll: fixed + daily + extra');
+  eq(mm.baskets.map((q) => q.id), ['a', 's', 'xs'], 'kolejnosc po order z extra');
+});
+
 // ---------- podsumowanie ----------
 const summary = document.getElementById('summary');
 summary.textContent = passed + '/' + total + ' PASS';

@@ -5,8 +5,9 @@ import { esc, ICON, fmtStamp, nowIso } from './util.js';
 import { backupNow, csvNow, importText, importFile } from './backup.js';
 import { showToast } from './toast.js';
 import { getAi, setAi, clearAi, maskKey, checkKey } from './receipt.js';
+import { renderPlanSections } from './plans.js';
 
-export const APP_VERSION = 'F1.1 · 2026-11';
+export const APP_VERSION = 'F2 · 2026-11';
 
 function inputVal(g) { return g == null ? '' : fmtMoney(g, { noUnit: true }); }
 
@@ -31,6 +32,7 @@ export function renderSettings(ctx) {
 
   h += '<div class="sec first">Limity miesięczne</div><div class="card list">';
   baskets.forEach((b) => {
+    if (b.kind === 'extra' || b.deleted) return;
     if (b.kind === 'daily' || b.kind === 'fixed') {
       h += '<div class="srow"><span class="nm">' + esc(b.name) + (b.kind === 'fixed' ? '<small>płatności stałe razem</small>' : '') + '</span>' +
         '<span class="inp"><input type="text" inputmode="decimal" autocomplete="off" class="num" data-change="limit" data-id="' + esc(b.id) + '" value="' + inputVal(b.limit || 0) + '" aria-label="Limit: ' + esc(b.name) + '">zł</span></div>';
@@ -45,6 +47,8 @@ export function renderSettings(ctx) {
     }
   });
   h += '</div>';
+
+  h += renderPlanSections(ctx);
 
   h += '<div class="sec">Cel Wakacje</div><div class="card list">' +
     '<div class="srow"><span class="nm">Saldo<small>stan celu w dniu poniżej</small></span><span class="inp"><input type="text" inputmode="decimal" autocomplete="off" class="num" data-change="wak-balance" value="' + inputVal(s.wakacjeBalance) + '" placeholder="0,00" aria-label="Saldo Wakacje">zł</span></div>' +

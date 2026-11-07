@@ -67,8 +67,22 @@ function cmpEntriesDesc(a, b) {
   return 0;
 }
 
+// koszyki widoczne w miesiacu ym (kontrakt 11.2): bez deleted; 'extra' tylko w zakresie from..until
+export function basketsForMonth(baskets, ym) {
+  return (baskets || []).filter((b) => {
+    if (!b || b.deleted) return false;
+    if (b.kind === 'extra') return !!b.from && !!b.until && b.from <= ym && ym <= b.until;
+    return true;
+  });
+}
+
 function basketStatus(kind, spent, limit, pace, planned) {
   if (kind === 'outside') return 'none';
+  if (kind === 'extra') {
+    if (spent > limit) return 'bad';
+    if (limit > 0 && spent >= 0.8 * limit) return 'warn';
+    return 'ok';
+  }
   if (kind === 'daily') {
     if (spent > limit) return 'bad';
     if (spent > pace) return 'warn';
@@ -109,7 +123,11 @@ export function monthState(ym, data, today) {
   const monthEntries = entries.filter((e) => monthOf(e.date) === ym);
   const weekend = weekendRange(today);
 
+  // extra / deleted: tylko gdy widoczny w miesiacu albo ma w nim wpisy (wydatki nie znikaja z sum)
+  const visibleIds = new Set(basketsForMonth(basketsIn, ym).map((b) => b.id));
+  const entryBasketIds = new Set(monthEntries.map((e) => e.basket));
   const baskets = basketsIn
+    .filter((b) => (b.kind !== 'extra' && !b.deleted) || visibleIds.has(b.id) || entryBasketIds.has(b.id))
     .slice()
     .sort((a, b) => (a.order || 0) - (b.order || 0))
     .map((b) => {
@@ -122,6 +140,8 @@ export function monthState(ym, data, today) {
       if (b.kind === 'outside') limit = null;
       // potwierdzone wystąpienie liczy się kwotą faktycznie zapłaconą (catering droższy o 3 zł nie robi czerwonego koszyka)
       else if (b.kind === 'planned') limit = bOccs.reduce((s, o) => (o.state === 'skipped' ? s : s + (o.state === 'confirmed' ? o.paidAmount : o.amount)), 0);
+      // extra poza swoim zakresem (albo usunięty) ma limit 0: wydatki się liczą, kwota z budżetu już nie
+      else if (b.kind === 'extra' && !visibleIds.has(b.id)) limit = 0;
       else limit = b.limit || 0;
 
       const remaining = limit === null ? null : limit - spent;
@@ -157,6 +177,7 @@ export function monthState(ym, data, today) {
   let spentAll = 0;
   let outsideSpent = 0;
   const daily = { limit: 0, spent: 0, remaining: 0 };
+  const extra = { limit: 0, spent: 0 };
   let toPay = 0;
   for (const b of baskets) {
     if (b.kind === 'outside') {
@@ -165,7 +186,11 @@ export function monthState(ym, data, today) {
     }
     limitAll += b.limit;
     spentAll += b.spent;
-    if (b.kind === 'daily') {
+    if (b.kind === 'extra') {
+      extra.limit += b.limit;
+      extra.spent += b.spent;
+    }
+    if (b.kind === 'daily' || b.kind === 'extra') {
       daily.limit += b.limit;
       daily.spent += b.spent;
     } else {
@@ -201,7 +226,7 @@ export function monthState(ym, data, today) {
     isCurrent,
     isPast,
     baskets,
-    totals: { limitAll, spentAll, daily, perDay, toPay, due, bySource, outsideSpent, wakacje },
+    totals: { limitAll, spentAll, daily, perDay, toPay, due, bySource, outsideSpent, wakacje, extra },
   };
 }
 

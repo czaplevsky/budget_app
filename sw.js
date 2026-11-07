@@ -20,6 +20,7 @@ const ASSETS = [
   './js/ui/settings.js',
   './js/ui/welcome.js',
   './js/ui/receipt.js',
+  './js/ui/plans.js',
   './manifest.webmanifest',
   './icons/icon-180.png',
   './icons/icon-192.png',

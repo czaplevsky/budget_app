@@ -74,7 +74,7 @@ export function srcChip(source) {
 // Klasa statusu koszyka (ok/warn/bad/neu). Dla fixed/planned "ok" = neutralny (akcent).
 export function statusCls(b) {
   if (b.kind === 'outside') return 'neu';
-  if (b.kind === 'daily') return b.status === 'bad' ? 'bad' : b.status === 'warn' ? 'warn' : 'ok';
+  if (b.kind === 'daily' || b.kind === 'extra') return b.status === 'bad' ? 'bad' : b.status === 'warn' ? 'warn' : 'ok';
   return b.status === 'bad' ? 'bad' : b.status === 'warn' ? 'warn' : 'neu';
 }
 
