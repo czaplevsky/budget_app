@@ -9,3 +9,8 @@ scripts/accounts.local.json
 SOURCES/
 supabase/.temp/
 node_modules/
+
+# kopie z danymi osobistymi: nigdy do repo
+koszyki-*.json
+*.json.bak
+.claude/
