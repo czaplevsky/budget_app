@@ -4,8 +4,9 @@ import { fmtMoney, parseAmount } from '../format.js';
 import { esc, ICON, fmtStamp, nowIso } from './util.js';
 import { backupNow, csvNow, importText, importFile } from './backup.js';
 import { showToast } from './toast.js';
+import { getAi, setAi, clearAi, maskKey, checkKey } from './receipt.js';
 
-export const APP_VERSION = 'F1 · 2026-11';
+export const APP_VERSION = 'F1.1 · 2026-11';
 
 function inputVal(g) { return g == null ? '' : fmtMoney(g, { noUnit: true }); }
 
@@ -60,6 +61,22 @@ export function renderSettings(ctx) {
 
   h += '<div class="sec">Eksport</div><div class="card list"><div class="sbtn"><button type="button" class="btn sec2 block" data-act="csv">' + ICON.down + 'Eksportuj CSV</button></div></div>';
 
+  const ai = getAi();
+  const st = ui.aiStatus;
+  h += '<div class="sec">Paragony (OpenAI)</div><div class="card list">';
+  if (!ai.key) {
+    h += '<div class="srow"><span class="nm">Klucz API<small>wklej klucz sk-… z platform.openai.com</small></span>' +
+      '<span class="inp"><input type="password" autocomplete="off" autocapitalize="off" spellcheck="false" data-change="ai-key" placeholder="sk-…" aria-label="Klucz OpenAI" style="width:140px;text-align:left"></span></div>';
+  } else {
+    h += '<div class="srow"><span class="nm">Klucz API<small>' + esc(maskKey(ai.key)) + (ai.model ? ' · model ' + esc(ai.model) : '') + '</small></span>' +
+      '<span class="val ' + (st && st.ok === true ? 'good' : st && st.ok === false ? 'warnc' : '') + '">' +
+      (st ? esc(st.short) : 'zapisany') + '</span></div>';
+    if (st && st.ok === false) h += '<div class="sbtn"><div class="res err" role="status">' + esc(st.text) + '</div></div>';
+    h += '<div class="sbtn"><button type="button" class="btn sec2 block" data-act="ai-check">Sprawdź klucz</button>' +
+      '<button type="button" class="btn sec2 block" data-act="ai-clear" style="margin-top:8px">Usuń klucz</button></div>';
+  }
+  h += '<div class="sbtn"><div class="sub">Klucz zostaje tylko na tym telefonie, nie trafia do kopii ani CSV. Zdjęcie idzie do OpenAI, appka go nie zapisuje.</div></div></div>';
+
   const p = ui.persisted;
   h += '<div class="sec">Aplikacja</div><div class="card list">' +
     '<div class="srow"><span class="nm">Trwałe przechowywanie<small>chroni dane przed czyszczeniem przez system</small></span><span class="val ' + (p === true ? 'good' : p === false ? 'warnc' : '') + '">' +
@@ -68,7 +85,29 @@ export function renderSettings(ctx) {
   return h;
 }
 
+async function runAiCheck(ctx) {
+  const ai = getAi();
+  if (!ai.key) return;
+  ctx.ui.aiStatus = { ok: null, short: 'sprawdzam…' };
+  ctx.render();
+  try {
+    const model = await checkKey(ai.key);
+    setAi({ model });
+    ctx.ui.aiStatus = { ok: true, short: 'działa' };
+  } catch (err) {
+    ctx.ui.aiStatus = { ok: false, short: 'błąd', text: err && err.message ? err.message : 'Nie udało się sprawdzić klucza.' };
+  }
+  ctx.render();
+}
+
 export const actions = {
+  async 'ai-check'(el, ctx) { await runAiCheck(ctx); },
+  'ai-clear'(el, ctx) {
+    clearAi();
+    ctx.ui.aiStatus = null;
+    ctx.render();
+    showToast('Klucz usunięty z telefonu');
+  },
   async 'backup-now'(el, ctx) { await backupNow(ctx); },
   async csv(el, ctx) { await csvNow(ctx); },
   async 'import-paste'(el, ctx) {
@@ -78,6 +117,13 @@ export const actions = {
 };
 
 export const changes = {
+  async 'ai-key'(el, ctx) {
+    const k = String(el.value || '').replace(/\s+/g, '');
+    if (!k) return;
+    setAi({ key: k, model: '' });
+    el.value = '';
+    await runAiCheck(ctx);
+  },
   async limit(el, ctx) {
     const b = ctx.data.baskets.find((x) => x.id === el.dataset.id);
     if (!b) return;

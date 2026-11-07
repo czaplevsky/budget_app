@@ -4,6 +4,7 @@ import { fmtMoney, fmtDateShort, keypadPress, amountInputToGrosze, addDays } fro
 import { esc, ICON, SOURCES, SRC_SHORT, dm, groszeToKeypad, isPlan } from './util.js';
 import { findOcc, maybeAskNext } from './occ.js';
 import { showToast } from './toast.js';
+import { readReceipt } from './receipt.js';
 
 function $(id) { return document.getElementById(id); }
 
@@ -85,8 +86,11 @@ export function renderSheet(ctx) {
   const msb = ctx.ms.baskets.find((b) => b.id === f.basket);
   let h = '<div class="grab"></div><div class="sh-top"><button type="button" data-act="sheet-close">Anuluj</button>' +
     '<h2>' + (f.id ? 'Edytuj wpis' : 'Nowy wydatek') + '</h2>' +
-    (f.id ? '<button type="button" class="dl" data-act="sheet-delete">Usuń</button>' : '<span class="ph"></span>') + '</div>';
-  h += '<div class="amt num' + (f.amt === '' ? ' zero' : '') + (f.refund ? ' refund' : '') + '" id="amt">' + amtText(f) + '<small>zł</small></div>';
+    (f.id ? '<button type="button" class="dl" data-act="sheet-delete">Usuń</button>'
+      : '<label class="scan' + (f.scanning ? ' busy' : '') + '">' + ICON.cam + (f.scanning ? 'Czytam…' : 'Paragon') +
+        (f.scanning ? '' : '<input type="file" accept="image/*" data-change="sheet-receipt" aria-label="Zdjęcie paragonu lub zrzut ekranu">') + '</label>') + '</div>';
+  h += '<div class="amt num' + (f.amt === '' ? ' zero' : '') + (f.refund ? ' refund' : '') + (f.scanning ? ' scanning' : '') + '" id="amt">' +
+    (f.scanning ? 'czytam paragon…' : amtText(f) + '<small>zł</small>') + '</div>';
   h += '<div class="bgrid">' + baskets.map((b) =>
     '<button type="button" class="bk' + (b.kind === 'outside' ? ' out2' : '') + (f.basket === b.id ? ' on' : '') + '" data-act="sheet-basket" data-id="' + esc(b.id) + '">' + esc(b.name) + '</button>'
   ).join('') + '</div>';
@@ -150,7 +154,7 @@ export const actions = {
   },
   'sheet-key'(el, ctx) {
     const f = ctx.ui.sheet;
-    if (!f) return;
+    if (!f || f.scanning) return;
     f.amt = keypadPress(f.amt, el.dataset.k);
     updateAmt(ctx);
   },
@@ -258,6 +262,31 @@ export const actions = {
 };
 
 export const changes = {
+  async 'sheet-receipt'(el, ctx) {
+    const f = ctx.ui.sheet;
+    const file = el.files && el.files[0];
+    if (!f || !file || f.scanning) return;
+    f.scanning = true;
+    renderSheet(ctx);
+    try {
+      const r = await readReceipt(file, ctx);
+      if (ctx.ui.sheet !== f) return; // arkusz zamknięty w trakcie
+      if (r.grosze) f.amt = groszeToKeypad(r.grosze);
+      if (r.date) f.date = r.date;
+      if (r.merchant) f.note = r.merchant;
+      if (r.basket) { f.basket = r.basket; f.occId = null; }
+      f.refund = r.refund;
+      const miss = [];
+      if (!r.grosze) miss.push('kwoty');
+      if (!r.basket) miss.push('koszyka');
+      showToast(miss.length ? 'Nie odczytałem ' + miss.join(' ani ') + ', uzupełnij' : (r.confidence === 'high' ? 'Odczytane, sprawdź i zapisz' : 'Odczytane, ale sprawdź dokładnie'));
+    } catch (err) {
+      showToast(err && err.message ? err.message : 'Nie udało się odczytać zdjęcia');
+    } finally {
+      f.scanning = false;
+      if (ctx.ui.sheet === f) renderSheet(ctx);
+    }
+  },
   'sheet-date'(el, ctx) {
     const f = ctx.ui.sheet;
     if (!f || !/^\d{4}-\d{2}-\d{2}$/.test(el.value)) return;

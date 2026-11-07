@@ -180,7 +180,7 @@ button.entry:active{background:var(--code-bg)}
 .scrim{position:absolute;inset:0;z-index:40;background:rgba(2,6,23,.5);opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s}
 .scrim.on{opacity:1;visibility:visible}
 .dscrim{z-index:70}
-.sheet{position:absolute;left:0;right:0;bottom:0;height:90%;z-index:50;background:var(--bg);border-radius:28px 28px 0 0;transform:translateY(102%);transition:transform .32s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;padding:8px 16px calc(var(--sab) + 8px);box-shadow:0 -10px 40px rgba(2,6,23,.25);visibility:hidden}
+.sheet{position:absolute;left:0;right:0;bottom:0;height:calc(100% - var(--sat) - 4px);overflow-y:auto;overscroll-behavior:contain;z-index:50;background:var(--bg);border-radius:28px 28px 0 0;transform:translateY(102%);transition:transform .32s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;padding:8px 16px calc(var(--sab) + 8px);box-shadow:0 -10px 40px rgba(2,6,23,.25);visibility:hidden}
 .sheet.on{transform:none;visibility:visible}
 .grab{width:36px;height:5px;border-radius:3px;background:var(--line-strong);margin:0 auto 4px;flex:none}
 .sh-top{display:flex;justify-content:space-between;align-items:center;flex:none;min-height:44px}
@@ -188,7 +188,13 @@ button.entry:active{background:var(--code-bg)}
 .sh-top button{min-height:44px;min-width:64px;font-size:16px;color:var(--accent-ink);font-weight:500}
 .sh-top button.dl{color:var(--bad);text-align:right}
 .sh-top .ph{min-width:64px}
-.amt{flex:none;text-align:center;font-size:56px;line-height:64px;font-weight:700;letter-spacing:-.03em;white-space:nowrap}
+.scan{position:relative;overflow:hidden;min-height:36px;min-width:64px;padding:0 12px;border-radius:18px;background:var(--accent-tint);color:var(--accent-ink);font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.scan svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.scan input{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px}
+.scan.busy{opacity:.7}
+.amt.scanning{font-size:22px;color:var(--muted);font-weight:600;letter-spacing:0;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.45}}
+.amt{flex:none;text-align:center;font-size:52px;line-height:60px;font-weight:700;letter-spacing:-.03em;white-space:nowrap}
 .amt.zero{color:var(--line-strong)}
 .amt.refund{color:var(--ok)}
 .amt small{font-size:28px;font-weight:600;margin-left:4px;color:var(--muted)}
@@ -213,7 +219,7 @@ button.entry:active{background:var(--code-bg)}
 .src2 button{font-size:13px;padding:0 2px}
 .desc{flex:none;width:100%;min-height:44px;border-radius:12px;border:1px solid var(--line-strong);background:var(--surface);padding:0 16px;font-size:16px;outline:0;margin-bottom:8px}
 .desc:focus{border-color:var(--accent)}
-.keys{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(4,minmax(44px,1fr));gap:8px;flex:1;min-height:0}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(4,minmax(44px,1fr));gap:8px;flex:1 0 auto;min-height:200px}
 .key{border-radius:12px;background:var(--surface);box-shadow:var(--shadow);border:1px solid var(--cardline);font-size:24px;font-weight:500;min-height:44px;display:grid;place-items:center}
 .key:active{background:var(--accent-tint)}
 .key svg{width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
