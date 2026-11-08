@@ -1,6 +1,7 @@
 // Testy format.js i calc.js. Tylko liczby syntetyczne. Uruchamiane z tests.html.
 import * as F from './format.js';
 import * as C from './calc.js';
+import * as U from './usage.js';
 
 const N = ' '; // twarda spacja
 const M = '−'; // minus
@@ -672,6 +673,54 @@ group('koszyk extra w monthState', () => {
   eq(mm.totals.daily.limit, 130000, 'fixed nie wchodzi do daily, extra tak');
   eq(mm.totals.limitAll, 140000, 'limitAll: fixed + daily + extra');
   eq(mm.baskets.map((q) => q.id), ['a', 's', 'xs'], 'kolejnosc po order z extra');
+});
+
+// ---------- licznik kosztów OpenAI (usage.js) ----------
+group('usage: ceny, koszt, podsumowanie', () => {
+  eq(U.priceFor('gpt-4o-mini-2024-07-18'), { in: 0.15, out: 0.60 }, 'gpt-4o-mini z sufiksem daty nie wpada w gpt-4o');
+  eq(U.priceFor('gpt-4o-2024-08-06'), { in: 2.50, out: 10.00 }, 'gpt-4o z sufiksem daty');
+  eq(U.priceFor('gpt-4.1-mini-2025-04-14'), { in: 0.40, out: 1.60 }, 'gpt-4.1-mini z sufiksem daty');
+  eq(U.priceFor('cos-nieznanego'), null, 'nieznany model: brak ceny');
+  eq(U.priceFor(''), null, 'pusty model: brak ceny');
+  // 1 mln tokenów wejścia + 1 mln wyjścia na gpt-4o-mini = 0,15 + 0,60
+  eq(Math.round(U.costUsd({ m: 'gpt-4o-mini', pi: 1e6, po: 1e6 }) * 1e6), 750000, 'costUsd: 1M+1M tokenów gpt-4o-mini = $0,75');
+  eq(U.costUsd({ m: 'x', pi: 10, po: 10 }), null, 'costUsd: nieznany model = null');
+
+  const log = [
+    { d: '2026-11-02', m: 'gpt-4.1-mini', pi: 2000, po: 100 },
+    { d: '2026-11-09', m: 'gpt-4.1-mini', pi: 3000, po: 100 },
+    { d: '2026-10-30', m: 'gpt-4o-mini', pi: 25000, po: 80 },
+    { d: '2026-11-10', m: 'nieznany', pi: 500, po: 10 },
+  ];
+  const nov = U.summarize(log, '2026-11');
+  eq(nov.scans, 3, 'listopad: 3 odczyty (październikowy pominięty)');
+  eq(nov.unpriced, 1, 'listopad: 1 wpis bez ceny');
+  eq(nov.tokensIn, 5500, 'listopad: suma tokenów wejścia');
+  // (2000+3000)*0,40/1e6 + 200*1,60/1e6 = 0,002 + 0,00032
+  eq(Math.round(nov.usd * 1e8), 232000, 'listopad: koszt = $0,00232 (bez wpisu nieznanego modelu)');
+  eq(Math.round(nov.avgUsd * 1e8), 116000, 'listopad: średnia liczona tylko z wycenionych');
+  eq(U.summarize(log).scans, 4, 'bez miesiąca: wszystkie wpisy');
+  eq(U.summarize([], '2026-11').avgUsd, null, 'pusty dziennik: średnia null');
+  eq(U.fmtUsd(0.00232), '$0,0023', 'fmtUsd: przecinek, 4 miejsca');
+  eq(U.fmtPln(1.5), '1,50 zł', 'fmtPln');
+
+  // recordUsage + getLog na prawdziwym localStorage. tests.html stoi na tym samym origin co appka,
+  // więc prawdziwy dziennik kosztów zapisujemy i odtwarzamy po teście (inaczej test by go skasował).
+  let saved = null;
+  try { saved = localStorage.getItem('koszyki.aiusage'); } catch (err) { /* ignoruj */ }
+  try {
+    U.clearUsage();
+    eq(U.recordUsage({}, '2026-11-08', 'm'), null, 'recordUsage: odpowiedź bez usage = null');
+    const e = U.recordUsage({ model: 'gpt-4o-mini-2024-07-18', usage: { prompt_tokens: 100, completion_tokens: 20 } }, '2026-11-08', 'fallback');
+    eq(e, { d: '2026-11-08', m: 'gpt-4o-mini-2024-07-18', pi: 100, po: 20 }, 'recordUsage: zapisuje model z odpowiedzi');
+    eq(U.getLog().length, 1, 'getLog: jeden wpis');
+    U.recordUsage({ usage: { prompt_tokens: 1, completion_tokens: 1 } }, '2026-11-08', 'fallback');
+    eq(U.getLog()[1].m, 'fallback', 'recordUsage: brak modelu w odpowiedzi = model z ustawień');
+    U.clearUsage();
+    eq(U.getLog(), [], 'clearUsage czyści dziennik');
+  } finally {
+    try { if (saved != null) localStorage.setItem('koszyki.aiusage', saved); else localStorage.removeItem('koszyki.aiusage'); } catch (err) { /* ignoruj */ }
+  }
 });
 
 // ---------- podsumowanie ----------

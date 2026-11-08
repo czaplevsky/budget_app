@@ -4,7 +4,9 @@ import { fmtMoney, parseAmount } from '../format.js';
 import { esc, ICON, fmtStamp, nowIso } from './util.js';
 import { backupNow, csvNow, importText, importFile } from './backup.js';
 import { showToast } from './toast.js';
-import { getAi, setAi, clearAi, maskKey, checkKey } from './receipt.js';
+import { getAi, setAi, clearAi, maskKey, checkKey, PREFERRED } from './receipt.js';
+import { getLog, clearUsage, summarize, fmtUsd, fmtPln, USD_PLN } from '../usage.js';
+import { monthOf } from '../format.js';
 import { renderPlanSections } from './plans.js';
 
 export const APP_VERSION = 'F2 · 2026-11';
@@ -76,10 +78,17 @@ export function renderSettings(ctx) {
       '<span class="val ' + (st && st.ok === true ? 'good' : st && st.ok === false ? 'warnc' : '') + '">' +
       (st ? esc(st.short) : 'zapisany') + '</span></div>';
     if (st && st.ok === false) h += '<div class="sbtn"><div class="res err" role="status">' + esc(st.text) + '</div></div>';
+    h += '<div class="srow"><span class="nm">Model<small>do odczytu zdjęć; zmień, żeby porównać koszty</small></span>' +
+      '<span class="inp"><select data-change="ai-model" aria-label="Model OpenAI">' +
+      (ai.model && PREFERRED.indexOf(ai.model) < 0 ? '<option value="' + esc(ai.model) + '" selected>' + esc(ai.model) + '</option>' : '') +
+      PREFERRED.map((m) => '<option value="' + esc(m) + '"' + (m === ai.model ? ' selected' : '') + '>' + esc(m) + '</option>').join('') +
+      '</select></span></div>';
     h += '<div class="sbtn"><button type="button" class="btn sec2 block" data-act="ai-check">Sprawdź klucz</button>' +
       '<button type="button" class="btn sec2 block" data-act="ai-clear" style="margin-top:8px">Usuń klucz</button></div>';
   }
   h += '<div class="sbtn"><div class="sub">Klucz zostaje tylko na tym telefonie, nie trafia do kopii ani CSV. Zdjęcie idzie do OpenAI, appka go nie zapisuje.</div></div></div>';
+
+  h += renderAiCosts(ctx);
 
   const p = ui.persisted;
   h += '<div class="sec">Aplikacja</div><div class="card list">' +
@@ -89,13 +98,47 @@ export function renderSettings(ctx) {
   return h;
 }
 
+// '1 odczyt', '2 odczyty', '5 odczytów', '12 odczytów', '22 odczyty'
+function odcz(n) {
+  const m10 = n % 10, m100 = n % 100;
+  return n + ' ' + (n === 1 ? 'odczyt' : (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) ? 'odczyty' : 'odczytów');
+}
+
+function nTokens(n) { return n >= 10000 ? Math.round(n / 1000) + ' tys.' : String(n); }
+
+// Sekcja kosztów OpenAI: ten miesiąc, średnia na paragon, od początku, podział na modele.
+function renderAiCosts(ctx) {
+  const log = getLog();
+  if (!log.length) {
+    return '<div class="sec">Koszty OpenAI</div><div class="card list"><div class="sbtn"><div class="sub" style="margin-top:0">' +
+      'Licznik zacznie liczyć od pierwszego odczytanego paragonu.</div></div></div>';
+  }
+  const ym = monthOf(ctx.today);
+  const mon = summarize(log, ym);
+  const all = summarize(log);
+  const money = (s) => s.unpriced === s.scans ? 'brak ceny' : fmtUsd(s.usd) + ' · ' + fmtPln(s.pln);
+  let h = '<div class="sec">Koszty OpenAI</div><div class="card list">';
+  h += '<div class="srow"><span class="nm">Ten miesiąc<small>' + odcz(mon.scans) + '</small></span><span class="val num">' + esc(money(mon)) + '</span></div>';
+  h += '<div class="srow"><span class="nm">Średnio na paragon<small>z całego dziennika</small></span><span class="val num">' +
+    (all.avgUsd == null ? '—' : esc(fmtUsd(all.avgUsd) + ' · ' + fmtPln(all.avgUsd * USD_PLN))) + '</span></div>';
+  h += '<div class="srow"><span class="nm">Od początku<small>' + odcz(all.scans) + ' · ' + nTokens(all.tokensIn) + ' tok. wej. · ' + nTokens(all.tokensOut) + ' wyj.</small></span><span class="val num">' + esc(money(all)) + '</span></div>';
+  Object.keys(all.byModel).sort().forEach((m) => {
+    const b = all.byModel[m];
+    h += '<div class="srow"><span class="nm">' + esc(m) + '<small>' + odcz(b.scans) + '</small></span><span class="val num">' +
+      (b.usd > 0 ? esc(fmtUsd(b.usd / b.scans) + ' / szt.') : 'brak ceny') + '</span></div>';
+  });
+  h += '<div class="sbtn"><button type="button" class="btn sec2 block" data-act="ai-usage-clear">Wyzeruj licznik</button>' +
+    '<div class="sub">Koszt liczony z tokenów, które zwraca OpenAI, po cenach z cennika (kurs ' + String(USD_PLN).replace('.', ',') + ' zł/$). To podgląd, nie rachunek: prawdziwe saldo jest na platform.openai.com/usage.</div></div></div>';
+  return h;
+}
+
 async function runAiCheck(ctx) {
   const ai = getAi();
   if (!ai.key) return;
   ctx.ui.aiStatus = { ok: null, short: 'sprawdzam…' };
   ctx.render();
   try {
-    const model = await checkKey(ai.key);
+    const model = await checkKey(ai.key, ai.model);
     setAi({ model });
     ctx.ui.aiStatus = { ok: true, short: 'działa' };
   } catch (err) {
@@ -112,6 +155,11 @@ export const actions = {
     ctx.render();
     showToast('Klucz usunięty z telefonu');
   },
+  'ai-usage-clear'(el, ctx) {
+    clearUsage();
+    ctx.render();
+    showToast('Licznik kosztów wyzerowany');
+  },
   async 'backup-now'(el, ctx) { await backupNow(ctx); },
   async csv(el, ctx) { await csvNow(ctx); },
   async 'import-paste'(el, ctx) {
@@ -121,6 +169,13 @@ export const actions = {
 };
 
 export const changes = {
+  'ai-model'(el, ctx) {
+    if (!el.value) return;
+    setAi({ model: el.value });
+    ctx.ui.aiStatus = null;
+    showToast('Model: ' + el.value);
+    ctx.render();
+  },
   async 'ai-key'(el, ctx) {
     const k = String(el.value || '').replace(/\s+/g, '');
     if (!k) return;

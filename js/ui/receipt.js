@@ -3,11 +3,12 @@
 
 import { basketsForMonth } from '../calc.js';
 import { monthOf } from '../format.js';
+import { recordUsage } from '../usage.js';
 
 const LS_KEY = 'koszyki.ai';
 const API = 'https://api.openai.com/v1';
 // kolejność preferencji: tani model z obsługą zdjęć i structured outputs
-const PREFERRED = ['gpt-4.1-mini', 'gpt-4o-mini', 'gpt-5-mini', 'gpt-4.1', 'gpt-4o'];
+export const PREFERRED = ['gpt-4.1-mini', 'gpt-4o-mini', 'gpt-5-mini', 'gpt-4.1', 'gpt-4o'];
 const MAX_SIDE = 1600;
 
 export function getAi() {
@@ -62,11 +63,11 @@ async function apiFetch(path, key, body) {
   return data;
 }
 
-// Sprawdza klucz i wybiera pierwszy dostępny model z listy preferencji.
-export async function checkKey(key) {
+// Sprawdza klucz i wybiera model: wskazany (wanted), jeśli jest dostępny, inaczej pierwszy z listy preferencji.
+export async function checkKey(key, wanted) {
   const data = await apiFetch('/models', key);
   const ids = new Set(((data && data.data) || []).map((m) => m.id));
-  const model = PREFERRED.find((m) => ids.has(m));
+  const model = (wanted && PREFERRED.indexOf(wanted) >= 0 && ids.has(wanted)) ? wanted : PREFERRED.find((m) => ids.has(m));
   if (!model) throw new AiError('Klucz działa, ale nie widzę żadnego modelu ze zdjęciami (' + PREFERRED.join(', ') + ').', 'model');
   return model;
 }
@@ -151,6 +152,8 @@ export async function readReceipt(file, ctx) {
     ai = setAi({ model: await checkKey(ai.key) });
     data = await apiFetch('/chat/completions', ai.key, body(ai.model));
   }
+  // zużycie liczymy zanim sprawdzimy treść: nieudany odczyt też kosztuje tokeny
+  recordUsage(data, ctx.today, ai.model || PREFERRED[0]);
   const msg = data && data.choices && data.choices[0] && data.choices[0].message;
   if (!msg || msg.refusal || !msg.content) throw new AiError('Nie udało się odczytać zdjęcia.', 'parse');
   let r;
